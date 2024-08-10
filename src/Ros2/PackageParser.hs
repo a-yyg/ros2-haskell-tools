@@ -101,10 +101,21 @@ parsePackageXML :: String -> Either PackageParseError Package
 parsePackageXML = parse pkgFile ""
 
 pkgFile :: Parser Package
-pkgFile = do
+pkgFile = try pkgFile2 <|> pkgFile3
+
+pkgFile2 :: Parser Package
+pkgFile2 = do
   optional $ lexeme xmlHeader
-  lexeme pkgHeader
-  pkgElements <- pkgBody
+  lexeme pkgHeader2
+  pkgElements <- pkgBody2
+  lexeme pkgFooter
+  return $ toPackage pkgElements
+
+pkgFile3 :: Parser Package
+pkgFile3 = do
+  optional $ lexeme xmlHeader
+  lexeme pkgHeader3
+  pkgElements <- pkgBody3
   lexeme pkgFooter
   return $ toPackage pkgElements
 
@@ -120,14 +131,20 @@ xmlHeader = do
           >> manyTill anySingle (try (string "?>"))
     )
 
-pkgHeader :: Parser String
-pkgHeader = string "<package format=\"3\">"
+pkgHeader2 :: Parser String
+pkgHeader2 = string "<package format=\"2\">"
+
+pkgHeader3 :: Parser String
+pkgHeader3 = string "<package format=\"3\">"
 
 pkgFooter :: Parser String
 pkgFooter = string "</package>"
 
-pkgBody :: Parser [PkgElement]
-pkgBody = many (lexeme pkgElement)
+pkgBody2 :: Parser [PkgElement]
+pkgBody2 = many (lexeme pkgElement3)
+
+pkgBody3 :: Parser [PkgElement]
+pkgBody3 = many (lexeme pkgElement3)
 
 -- whiteSpace = many (char ' ' <|> char '\t')
 
@@ -242,8 +259,23 @@ getGroupDependency deps (PkgGroupDependency (GroupDepend x)) = deps{group_depend
 getGroupDependency deps (PkgGroupDependency (MemberOfGroup x)) = deps{member_of_group = x : member_of_group deps}
 getGroupDependency deps _ = deps
 
-pkgElement :: Parser PkgElement
-pkgElement =
+pkgElement2 :: Parser PkgElement
+pkgElement2 =
+  lexeme
+    ( try pkgName
+          <|> try pkgVersion
+          <|> try pkgDescription
+          <|> try pkgMaintainerEmail
+          <|> try pkgMaintainer
+          <|> try pkgLicense
+          <|> try pkgUrl
+          <|> try pkgAuthor
+          <|> try pkgDependency
+          <|> try pkgExport
+       )
+
+pkgElement3 :: Parser PkgElement
+pkgElement3 =
   lexeme
     ( try pkgName
           <|> try pkgVersion
