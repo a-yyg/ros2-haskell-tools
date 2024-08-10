@@ -10,7 +10,7 @@ common warnings
     ghc-options: -Wall
 
 library ros2
-    exposed-modules: Ros2.PackageParser, Ros2.Graph
+    exposed-modules: Ros2.PackageParser, Ros2.IndexParser, Ros2.Graph
     build-depends: base, megaparsec, text, containers
     hs-source-dirs: src
 
@@ -26,6 +26,6 @@ executable depcheck
     import:           warnings
     main-is:          DepCheck.hs
     build-depends:    base, megaparsec, text, pretty-simple, cmdargs, containers, directory, dir-traverse
-    other-modules:    Ros2.PackageParser, Ros2.Graph
+    other-modules:    Ros2.PackageParser, Ros2.IndexParser, Ros2.Graph
     hs-source-dirs:   src
     default-language: Haskell2010

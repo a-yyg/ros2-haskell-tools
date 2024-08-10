@@ -1,7 +1,8 @@
 module Ros2.Graph where
 
-import Ros2.PackageParser
+import Ros2.PackageParser hiding (dependencies)
 
+import Data.Either
 import qualified Data.Graph as G
 
 -- import Data.Bifunctor
@@ -19,6 +20,25 @@ mkPkgGraph pkgs = PkgGraph pkgs deps
   getDeps' = getAllDeps . getDepTags
   deps = concatMap (\p -> map (\d -> (Ros2.PackageParser.name p, d)) (getDeps' p)) pkgs
 
+data DependencyError = DependencyError
+  { pkgName :: String
+  , missingDeps :: [String]
+  }
+  deriving (Show)
+
+checkPkg :: [String] -> PkgGraph -> Package -> Either DependencyError ()
+checkPkg i g p =
+  let
+    deps = getAllDeps $ getDepTags p
+    missing = filter (\d -> d `notElem` (i ++ map fst (dependencies g))) deps
+   in
+    if null missing
+      then Right ()
+      else Left $ DependencyError (name p) missing
+
 -- | Check the dependencies of a package graph
-checkDeps :: PkgGraph -> IO ()
-checkDeps = undefined
+checkDeps :: [String] -> PkgGraph -> Either [DependencyError] ()
+checkDeps i g =
+  case partitionEithers (map (checkPkg i g) (packages g)) of
+    ([], _) -> Right ()
+    (errs, _) -> Left errs
