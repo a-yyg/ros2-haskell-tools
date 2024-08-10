@@ -1,9 +1,9 @@
 cabal-version:   3.0
-name:            example
+name:            ros2-haskell-tools
 version:         0.1.0.0
-license:         NONE
-author:          Joe
-maintainer:      joe@example.com
+license:         GPL-2.0-only
+author:          Yuri Guimaraes
+maintainer:      yuri.kgpps@gmail.com
 build-type:      Simple
 
 common warnings
@@ -14,9 +14,9 @@ library ros2
     build-depends: base, parsec, text
     hs-source-dirs: src
 
-executable example
+executable depcheck
     import:           warnings
-    main-is:          Main.hs
+    main-is:          DepCheck.hs
     build-depends:    base, parsec, text, pretty-simple, cmdargs
     other-modules:    Ros2.PackageParser
     hs-source-dirs:   src
