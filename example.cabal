@@ -1,0 +1,23 @@
+cabal-version:   3.0
+name:            example
+version:         0.1.0.0
+license:         NONE
+author:          Joe
+maintainer:      joe@example.com
+build-type:      Simple
+
+common warnings
+    ghc-options: -Wall
+
+library ros2
+    exposed-modules: Ros2.PackageParser
+    build-depends: base, parsec, text
+    hs-source-dirs: src
+
+executable example
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base, parsec, text, pretty-simple, cmdargs
+    other-modules:    Ros2.PackageParser
+    hs-source-dirs:   src
+    default-language: Haskell2010
