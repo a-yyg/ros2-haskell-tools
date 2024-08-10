@@ -7,34 +7,50 @@
 -- import System.Console.ArgParser
 
 import Ros2.PackageParser
+import Ros2.Graph
 import System.Console.CmdArgs
 import Text.Pretty.Simple
 
+import Data.List
+import System.Directory.Recursive
+import Text.Parsec (ParseError)
+import Data.Either (partitionEithers)
+import Control.Monad (filterM)
+
 data DepCheck = DepCheck
-  { file :: FilePath
+  { dir :: FilePath
   }
   deriving (Show, Data, Typeable)
 
 depChkOpt :: DepCheck
 depChkOpt =
   DepCheck
-    { file =
+    { dir =
         def
-          &= typ "FILE"
-          &= opt "package.xml"
-          &= help "The package.xml file to parse"
+          &= typ "DIR"
+          &= opt "."
+          &= help "The directory to check for dependencies"
     }
     &= summary "depcheck v0.1.0.0"
     &= program "depcheck"
 
 main :: IO ()
-main = do
-  opts <- cmdArgs depChkOpt
-  content <- readFile $ file opts
-  -- print content
-  case parsePackageXML content of
-    Left err -> print err
-    Right parsed -> pPrint parsed
+main = pPrint =<< parseRootDir . dir =<< cmdArgs depChkOpt
+-- main = pPrint =<< getPackageXMLs . dir =<< cmdArgs depChkOpt
 
--- package <- parsePackageXML content
--- print package
+parseRootDir :: FilePath -> IO PkgGraph
+parseRootDir root = do
+  r <- parsePackageXMLs =<< getPackageXMLs root
+  case partitionEithers r of
+    ([], pkgs) -> return $ mkPkgGraph pkgs
+    (errs, _) -> error $ "Error parsing package.xml files: " ++ show errs
+
+getPackageXMLs :: FilePath -> IO [FilePath]
+-- getPackageXMLs = fmap (filter ("package.xml" `isSuffixOf`)) . getDirectoryContents
+getPackageXMLs files = do
+  curFiles <- getDirRecursive files
+  return $ filter ("package.xml" `isSuffixOf`) curFiles
+
+
+parsePackageXMLs :: [FilePath] -> IO [Either ParseError Package]
+parsePackageXMLs = fmap (map parsePackageXML) . mapM readFile

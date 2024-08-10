@@ -5,15 +5,15 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Ros2.PackageParser (parsePackageXML) where
+module Ros2.PackageParser where
 
 -- import Text.Parsec.Prim
 
 -- import Data.Functor.Identity
 import Data.Text (Text)
 import Data.Void (Void)
-import qualified Text.Parsec.Token as T
 import Text.Parsec.Language (haskellDef)
+import qualified Text.Parsec.Token as T
 import Text.ParserCombinators.Parsec
 
 -- import Control.Arrow
@@ -41,6 +41,19 @@ data DependencyTags = DependencyTags
   }
   deriving (Show)
 
+getAllDeps :: DependencyTags -> [String]
+getAllDeps deps =
+  build_depend deps
+    ++ build_export_depend deps
+    ++ buildtool_depend deps
+    ++ buildtool_export_depend deps
+    ++ exec_depend deps
+    ++ depend deps
+    ++ doc_depend deps
+    ++ test_depend deps
+    ++ conflict deps
+    ++ replace deps
+
 data ExportTags = ExportTags
   { architecture_independent :: Bool
   , build_type :: String
@@ -61,15 +74,18 @@ data Package = Package
   }
   deriving (Show)
 
+getDepTags :: Package -> DependencyTags
+getDepTags = dependencies
+
 parsePackageXML :: String -> Either ParseError Package
 parsePackageXML = parse pkgFile ""
 
 pkgFile :: Parser Package
 pkgFile = do
-  optional $ lexeme xmlHeader;
-  lexeme pkgHeader;
-  pkgElements <- lexeme pkgBody;
-  lexeme pkgFooter;
+  optional $ lexeme xmlHeader
+  lexeme pkgHeader
+  pkgElements <- lexeme pkgBody
+  lexeme pkgFooter
   return $ toPackage pkgElements
 
 xmlHeader :: Parser String
@@ -160,16 +176,16 @@ getDependencies :: [PkgElement] -> DependencyTags
 getDependencies = foldl getDependency (DependencyTags [] [] [] [] [] [] [] [] [] [])
 
 getDependency :: DependencyTags -> PkgElement -> DependencyTags
-getDependency deps (PkgDependency (BuildDepend x)) = deps { build_depend = x : build_depend deps }
-getDependency deps (PkgDependency (BuildExportDepend x)) = deps { build_export_depend = x : build_export_depend deps }
-getDependency deps (PkgDependency (BuildtoolDepend x)) = deps { buildtool_depend = x : buildtool_depend deps }
-getDependency deps (PkgDependency (BuildtoolExportDepend x)) = deps { buildtool_export_depend = x : buildtool_export_depend deps }
-getDependency deps (PkgDependency (ExecDepend x)) = deps { exec_depend = x : exec_depend deps }
-getDependency deps (PkgDependency (Depend x)) = deps { depend = x : depend deps }
-getDependency deps (PkgDependency (DocDepend x)) = deps { doc_depend = x : doc_depend deps }
-getDependency deps (PkgDependency (TestDepend x)) = deps { test_depend = x : test_depend deps }
-getDependency deps (PkgDependency (Conflict x)) = deps { conflict = x : conflict deps }
-getDependency deps (PkgDependency (Replace x)) = deps { replace = x : replace deps }
+getDependency deps (PkgDependency (BuildDepend x)) = deps{build_depend = x : build_depend deps}
+getDependency deps (PkgDependency (BuildExportDepend x)) = deps{build_export_depend = x : build_export_depend deps}
+getDependency deps (PkgDependency (BuildtoolDepend x)) = deps{buildtool_depend = x : buildtool_depend deps}
+getDependency deps (PkgDependency (BuildtoolExportDepend x)) = deps{buildtool_export_depend = x : buildtool_export_depend deps}
+getDependency deps (PkgDependency (ExecDepend x)) = deps{exec_depend = x : exec_depend deps}
+getDependency deps (PkgDependency (Depend x)) = deps{depend = x : depend deps}
+getDependency deps (PkgDependency (DocDepend x)) = deps{doc_depend = x : doc_depend deps}
+getDependency deps (PkgDependency (TestDepend x)) = deps{test_depend = x : test_depend deps}
+getDependency deps (PkgDependency (Conflict x)) = deps{conflict = x : conflict deps}
+getDependency deps (PkgDependency (Replace x)) = deps{replace = x : replace deps}
 getDependency deps _ = deps
 
 getExports :: [PkgElement] -> ExportTags
@@ -180,12 +196,11 @@ getExport exports (PkgExports xs) = foldl getExport' exports xs
 getExport exports _ = exports
 
 getExport' :: ExportTags -> Export -> ExportTags
-getExport' exports ArchitectureIndependent = exports { architecture_independent = True }
-getExport' exports (BuildType x) = exports { build_type = x }
-getExport' exports (Deprecated x) = exports { deprecated = True }
-getExport' exports (MessageGenerator x) = exports { message_generator = x }
-getExport' exports Metapackage = exports { metapackage = True }
-
+getExport' exports ArchitectureIndependent = exports{architecture_independent = True}
+getExport' exports (BuildType x) = exports{build_type = x}
+getExport' exports (Deprecated x) = exports{deprecated = True}
+getExport' exports (MessageGenerator x) = exports{message_generator = x}
+getExport' exports Metapackage = exports{metapackage = True}
 
 pkgElement :: Parser PkgElement
 pkgElement =
@@ -310,7 +325,8 @@ pkgExport :: Parser PkgElement
 pkgExport = do
   whiteSpace
   string "<export>\n"
-  x <- many1
+  x <-
+    many1
       ( try pkgArchitectureIndependent
           <|> try pkgBuildType
           <|> try pkgDeprecated
