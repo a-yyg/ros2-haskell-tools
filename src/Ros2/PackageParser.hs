@@ -12,6 +12,7 @@ module Ros2.PackageParser where
 -- import Data.Functor.Identity
 import Data.Text (Text)
 import Data.Void (Void)
+
 -- import Text.Megaparsec.Language (haskellDef)
 -- import qualified Text.Megaparsec.Char.Lexer as T
 -- import Text.ParserCombinators.Megaparsec
@@ -71,6 +72,12 @@ data ExportTags = ExportTags
   }
   deriving (Show)
 
+data GroupDependencies = GroupDependencies
+  { group_depend :: [String]
+  , member_of_group :: [String]
+  }
+  deriving (Show)
+
 data Package = Package
   { name :: String
   , version :: String
@@ -79,27 +86,32 @@ data Package = Package
   , license :: [String]
   , dependencies :: DependencyTags
   , exports :: ExportTags
+  , group_dependencies :: GroupDependencies
   }
   deriving (Show)
 
 getDepTags :: Package -> DependencyTags
 getDepTags = dependencies
 
+parsePackageXML :: String -> Either PackageParseError Package
 parsePackageXML = parse pkgFile ""
 
 pkgFile :: Parser Package
 pkgFile = do
   optional $ lexeme xmlHeader
   lexeme pkgHeader
-  pkgElements <- lexeme pkgBody
+  pkgElements <- pkgBody
   lexeme pkgFooter
   return $ toPackage pkgElements
 
-xmlHeader :: Parser String
-xmlHeader =
-  string "<?xml version=\"1.0\"?>\n"
-    >> string "<?xml-model"
-    >> manyTill anySingle (try (string "?>"))
+xmlHeader :: Parser (Maybe String)
+xmlHeader = do
+  _ <- lexeme $ string "<?xml version=\"1.0\"?>"
+  optional
+    ( lexeme $
+        string "<?xml-model"
+          >> manyTill anySingle (try (string "?>"))
+    )
 
 pkgHeader :: Parser String
 pkgHeader = string "<package format=\"3\">"
@@ -122,6 +134,7 @@ data PkgElement
   | PkgAuthor String
   | PkgDependency Dependency
   | PkgExports [Export]
+  | PkgGroupDependency GroupDependency
 
 data Dependency
   = BuildDepend String
@@ -142,6 +155,10 @@ data Export
   | MessageGenerator String
   | Metapackage
 
+data GroupDependency
+  = GroupDepend String
+  | MemberOfGroup String
+
 toPackage :: [PkgElement] -> Package
 toPackage elements =
   Package
@@ -152,6 +169,7 @@ toPackage elements =
     , license = getLicense elements
     , dependencies = getDependencies elements
     , exports = getExports elements
+    , group_dependencies = getGroupDependencies elements
     }
 
 getName :: [PkgElement] -> String
@@ -209,10 +227,18 @@ getExport' exports (Deprecated x) = exports{deprecated = True}
 getExport' exports (MessageGenerator x) = exports{message_generator = x}
 getExport' exports Metapackage = exports{metapackage = True}
 
+getGroupDependencies :: [PkgElement] -> GroupDependencies
+getGroupDependencies = foldl getGroupDependency (GroupDependencies [] [])
+
+getGroupDependency :: GroupDependencies -> PkgElement -> GroupDependencies
+getGroupDependency deps (PkgGroupDependency (GroupDepend x)) = deps{group_depend = x : group_depend deps}
+getGroupDependency deps (PkgGroupDependency (MemberOfGroup x)) = deps{member_of_group = x : member_of_group deps}
+getGroupDependency deps _ = deps
+
 pkgElement :: Parser PkgElement
 pkgElement =
-  whiteSpace
-    >> ( try pkgName
+  lexeme
+    ( try pkgName
           <|> try pkgVersion
           <|> try pkgDescription
           <|> try pkgMaintainerEmail
@@ -222,6 +248,7 @@ pkgElement =
           <|> try pkgAuthor
           <|> try pkgDependency
           <|> try pkgExport
+          <|> try pkgGroupDependency
        )
 
 pkgName :: Parser PkgElement
@@ -330,8 +357,7 @@ pkgReplace = parseTag "replace" Replace
 
 pkgExport :: Parser PkgElement
 pkgExport = do
-  whiteSpace
-  string "<export>\n"
+  lexeme $ string "<export>"
   x <-
     some
       ( try pkgArchitectureIndependent
@@ -340,21 +366,30 @@ pkgExport = do
           <|> try pkgMessageGenerator
           <|> try pkgMetapackage
       )
-  whiteSpace
-  string "</export>\n"
+  lexeme $ string "</export>"
   return $ PkgExports x
 
 pkgArchitectureIndependent = do
-  string "<architecture_independent/>"
+  lexeme $ string "<architecture_independent/>"
   return ArchitectureIndependent
 
-pkgBuildType = parseTag "build_type" BuildType
+pkgBuildType = lexeme $ parseTag "build_type" BuildType
 pkgDeprecated = do
-  string "<deprecated>\n"
-  x <- manyTill anySingle (string "</deprecated>\n")
+  lexeme $ string "<deprecated>"
+  x <- manyTill anySingle (string "</deprecated>")
   return $ Deprecated x
 
-pkgMessageGenerator = parseTag "message_generator" MessageGenerator
+pkgMessageGenerator = lexeme $ parseTag "message_generator" MessageGenerator
 pkgMetapackage = do
-  string "<metapackage/>"
+  lexeme $ string "<metapackage/>"
   return Metapackage
+
+pkgGroupDependency :: Parser PkgElement
+pkgGroupDependency = do
+  x <-
+    try pkgGroupDepend
+      <|> try pkgMemberOfGroup
+  return $ PkgGroupDependency x
+
+pkgGroupDepend = lexeme $ parseTag "group_depend" GroupDepend
+pkgMemberOfGroup = lexeme $ parseTag "member_of_group" MemberOfGroup
