@@ -30,7 +30,11 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void [Char]
 
 whiteSpace :: Parser ()
-whiteSpace = L.space space1 empty empty
+whiteSpace = L.space 
+  space1
+  empty
+  (L.skipBlockComment "<!--" "-->")
+
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme whiteSpace
 
@@ -107,6 +111,9 @@ pkgFile = do
 xmlHeader :: Parser (Maybe String)
 xmlHeader = do
   _ <- lexeme $ string "<?xml version=\"1.0\"?>"
+  optional
+    ( lexeme $
+        string "<!DOCTYPE xml>")
   optional
     ( lexeme $
         string "<?xml-model"
@@ -358,16 +365,17 @@ pkgReplace = parseTag "replace" Replace
 pkgExport :: Parser PkgElement
 pkgExport = do
   lexeme $ string "<export>"
-  x <-
-    some
-      ( try pkgArchitectureIndependent
-          <|> try pkgBuildType
-          <|> try pkgDeprecated
-          <|> try pkgMessageGenerator
-          <|> try pkgMetapackage
-      )
-  lexeme $ string "</export>"
-  return $ PkgExports x
+  -- x <-
+  --   some
+  --     ( try pkgArchitectureIndependent
+  --         <|> try pkgBuildType
+  --         <|> try pkgDeprecated
+  --         <|> try pkgMessageGenerator
+  --         <|> try pkgMetapackage
+  --     )
+  _ <- manyTill anySingle (string "</export>") -- TODO: parse export tags
+  -- lexeme $ string "</export>"
+  return $ PkgExports []
 
 pkgArchitectureIndependent = do
   lexeme $ string "<architecture_independent/>"
