@@ -6,7 +6,7 @@
 -- import Control.Applicative
 -- import System.Console.ArgParser
 
-import Ros2.PackageParser
+import Ros2.PackageParser (parsePackageXML)
 import System.Console.CmdArgs
 import Text.Pretty.Simple
 

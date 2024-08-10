@@ -13,7 +13,7 @@ import Text.Pretty.Simple
 
 import Data.List
 import System.Directory.Recursive
-import Text.Parsec (ParseError)
+import Text.Megaparsec (ParseErrorBundle)
 import Data.Either (partitionEithers)
 import Control.Monad (filterM)
 
@@ -52,5 +52,5 @@ getPackageXMLs files = do
   return $ filter ("package.xml" `isSuffixOf`) curFiles
 
 
-parsePackageXMLs :: [FilePath] -> IO [Either ParseError Package]
+parsePackageXMLs :: [FilePath] -> IO [Either PackageParseError Package]
 parsePackageXMLs = fmap (map parsePackageXML) . mapM readFile

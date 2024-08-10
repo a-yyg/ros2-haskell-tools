@@ -12,20 +12,28 @@ module Ros2.PackageParser where
 -- import Data.Functor.Identity
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Parsec.Language (haskellDef)
-import qualified Text.Parsec.Token as T
-import Text.ParserCombinators.Parsec
+-- import Text.Megaparsec.Language (haskellDef)
+-- import qualified Text.Megaparsec.Char.Lexer as T
+-- import Text.ParserCombinators.Megaparsec
+-- import Control.Applicative
+-- import Control.Monad
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 -- import Control.Arrow
 -- import Text.XML.HXT.Arrow.XmlArrow
 -- import Text.XML.HXT.Core
 -- import Text.XML.HXT.Parser.XmlParsec as XmlParsec
 
-lexer = T.makeTokenParser haskellDef
+type Parser = Parsec Void [Char]
+
 whiteSpace :: Parser ()
-whiteSpace = T.whiteSpace lexer
+whiteSpace = L.space space1 empty empty
 lexeme :: Parser a -> Parser a
-lexeme = T.lexeme lexer
+lexeme = L.lexeme whiteSpace
+
+type PackageParseError = ParseErrorBundle [Char] Void
 
 data DependencyTags = DependencyTags
   { build_depend :: [String]
@@ -77,7 +85,6 @@ data Package = Package
 getDepTags :: Package -> DependencyTags
 getDepTags = dependencies
 
-parsePackageXML :: String -> Either ParseError Package
 parsePackageXML = parse pkgFile ""
 
 pkgFile :: Parser Package
@@ -92,7 +99,7 @@ xmlHeader :: Parser String
 xmlHeader =
   string "<?xml version=\"1.0\"?>\n"
     >> string "<?xml-model"
-    >> manyTill anyChar (try (string "?>"))
+    >> manyTill anySingle (try (string "?>"))
 
 pkgHeader :: Parser String
 pkgHeader = string "<package format=\"3\">"
@@ -220,7 +227,7 @@ pkgElement =
 pkgName :: Parser PkgElement
 pkgName = do
   string "<name>"
-  x <- manyTill anyChar (string "</name>\n")
+  x <- manyTill anySingle (string "</name>\n")
   return $ PkgName x
 
 -- >>> parse pkgName "" "<name>ros2_package</name>\n"
@@ -229,7 +236,7 @@ pkgName = do
 pkgVersion :: Parser PkgElement
 pkgVersion = do
   string "<version>"
-  x <- manyTill anyChar (string "</version>\n")
+  x <- manyTill anySingle (string "</version>\n")
   return $ PkgVersion x
 
 -- >>> parse pkgVersion "" "<version>0.1.0</version>\n"
@@ -238,7 +245,7 @@ pkgVersion = do
 pkgDescription :: Parser PkgElement
 pkgDescription = do
   string "<description>"
-  x <- manyTill anyChar (string "</description>\n")
+  x <- manyTill anySingle (string "</description>\n")
   return $ PkgDescription x
 
 -- >>> parse pkgDescription "" "<description>Package description</description>\n"
@@ -247,14 +254,14 @@ pkgDescription = do
 pkgMaintainerEmail :: Parser PkgElement
 pkgMaintainerEmail = do
   string "<maintainer email=\""
-  email <- manyTill anyChar (string "\">")
-  name <- manyTill anyChar (string "</maintainer>\n")
+  email <- manyTill anySingle (string "\">")
+  name <- manyTill anySingle (string "</maintainer>\n")
   return $ PkgMaintainer name
 
 pkgMaintainer :: Parser PkgElement
 pkgMaintainer = do
   string "<maintainer>"
-  x <- manyTill anyChar (string "</maintainer>\n")
+  x <- manyTill anySingle (string "</maintainer>\n")
   return $ PkgMaintainer x
 
 -- >>> parse pkgMaintainer "" "<maintainer email=\"johndoe@gmail.com\">John Doe</maintainer>\n"
@@ -263,7 +270,7 @@ pkgMaintainer = do
 pkgLicense :: Parser PkgElement
 pkgLicense = do
   string "<license>"
-  x <- manyTill anyChar (string "</license>\n")
+  x <- manyTill anySingle (string "</license>\n")
   return $ PkgLicense x
 
 -- >>> parse pkgLicense "" "<license>MIT</license>\n"
@@ -272,7 +279,7 @@ pkgLicense = do
 pkgUrl :: Parser PkgElement
 pkgUrl = do
   string "<url>"
-  x <- manyTill anyChar (string "</url>\n")
+  x <- manyTill anySingle (string "</url>\n")
   return $ PkgUrl x
 
 -- >>> parse pkgUrl "" "<url>www.github.com</url>\n"
@@ -281,7 +288,7 @@ pkgUrl = do
 pkgAuthor :: Parser PkgElement
 pkgAuthor = do
   string "<author>"
-  x <- manyTill anyChar (string "</author>\n")
+  x <- manyTill anySingle (string "</author>\n")
   return $ PkgAuthor x
 
 -- >>> parse pkgAuthor "" "<author>John Doe</author>\n"
@@ -303,8 +310,8 @@ pkgDependency = do
   return $ PkgDependency x
 
 parseTag tag p = do
-  manyTill anyChar (string ("<" ++ tag ++ ">"))
-  x <- manyTill anyChar (string ("</" ++ tag ++ ">\n"))
+  manyTill anySingle (string ("<" ++ tag ++ ">"))
+  x <- manyTill anySingle (string ("</" ++ tag ++ ">\n"))
   return $ p x
 
 pkgBuildDepend = parseTag "build_depend" BuildDepend
@@ -326,7 +333,7 @@ pkgExport = do
   whiteSpace
   string "<export>\n"
   x <-
-    many1
+    some
       ( try pkgArchitectureIndependent
           <|> try pkgBuildType
           <|> try pkgDeprecated
@@ -344,7 +351,7 @@ pkgArchitectureIndependent = do
 pkgBuildType = parseTag "build_type" BuildType
 pkgDeprecated = do
   string "<deprecated>\n"
-  x <- manyTill anyChar (string "</deprecated>\n")
+  x <- manyTill anySingle (string "</deprecated>\n")
   return $ Deprecated x
 
 pkgMessageGenerator = parseTag "message_generator" MessageGenerator
