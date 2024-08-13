@@ -293,7 +293,7 @@ pkgElement3 =
 pkgName :: Parser PkgElement
 pkgName = do
   string "<name>"
-  x <- manyTill anySingle (string "</name>\n")
+  x <- manyTill anySingle (string "</name>")
   return $ PkgName x
 
 -- >>> parse pkgName "" "<name>ros2_package</name>\n"
@@ -302,7 +302,7 @@ pkgName = do
 pkgVersion :: Parser PkgElement
 pkgVersion = do
   string "<version>"
-  x <- manyTill anySingle (string "</version>\n")
+  x <- manyTill anySingle (string "</version>")
   return $ PkgVersion x
 
 -- >>> parse pkgVersion "" "<version>0.1.0</version>\n"
@@ -311,7 +311,7 @@ pkgVersion = do
 pkgDescription :: Parser PkgElement
 pkgDescription = do
   string "<description>"
-  x <- manyTill anySingle (string "</description>\n")
+  x <- manyTill anySingle (string "</description>")
   return $ PkgDescription x
 
 -- >>> parse pkgDescription "" "<description>Package description</description>\n"
@@ -321,13 +321,13 @@ pkgMaintainerEmail :: Parser PkgElement
 pkgMaintainerEmail = do
   string "<maintainer email=\""
   email <- manyTill anySingle (string "\">")
-  name <- manyTill anySingle (string "</maintainer>\n")
+  name <- manyTill anySingle (string "</maintainer>")
   return $ PkgMaintainer name
 
 pkgMaintainer :: Parser PkgElement
 pkgMaintainer = do
   string "<maintainer>"
-  x <- manyTill anySingle (string "</maintainer>\n")
+  x <- manyTill anySingle (string "</maintainer>")
   return $ PkgMaintainer x
 
 -- >>> parse pkgMaintainer "" "<maintainer email=\"johndoe@gmail.com\">John Doe</maintainer>\n"
@@ -336,7 +336,7 @@ pkgMaintainer = do
 pkgLicense :: Parser PkgElement
 pkgLicense = do
   string "<license>"
-  x <- manyTill anySingle (string "</license>\n")
+  x <- manyTill anySingle (string "</license>")
   return $ PkgLicense x
 
 -- >>> parse pkgLicense "" "<license>MIT</license>\n"
@@ -345,7 +345,7 @@ pkgLicense = do
 pkgUrl :: Parser PkgElement
 pkgUrl = do
   string "<url>"
-  x <- manyTill anySingle (string "</url>\n")
+  x <- manyTill anySingle (string "</url>")
   return $ PkgUrl x
 
 -- >>> parse pkgUrl "" "<url>www.github.com</url>\n"
@@ -354,7 +354,7 @@ pkgUrl = do
 pkgAuthor :: Parser PkgElement
 pkgAuthor = do
   string "<author>"
-  x <- manyTill anySingle (string "</author>\n")
+  x <- manyTill anySingle (string "</author>")
   return $ PkgAuthor x
 
 -- >>> parse pkgAuthor "" "<author>John Doe</author>\n"
@@ -377,7 +377,7 @@ pkgDependency = do
 
 parseTag tag p = do
   manyTill anySingle (string ("<" ++ tag ++ ">"))
-  x <- manyTill anySingle (string ("</" ++ tag ++ ">\n"))
+  x <- manyTill anySingle (string ("</" ++ tag ++ ">"))
   return $ p x
 
 pkgBuildDepend = parseTag "build_depend" BuildDepend
