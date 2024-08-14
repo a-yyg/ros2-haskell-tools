@@ -30,7 +30,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void [Char]
 
 whiteSpace :: Parser ()
-whiteSpace = L.space 
+whiteSpace = L.space
   space1
   empty
   (L.skipBlockComment "<!--" "-->")
@@ -97,8 +97,11 @@ data Package = Package
 getDepTags :: Package -> DependencyTags
 getDepTags = dependencies
 
-parsePackageXML :: String -> Either PackageParseError Package
-parsePackageXML = parse pkgFile ""
+parsePackageXML :: FilePath -> String -> Either PackageParseError Package
+parsePackageXML = parse pkgFile
+
+parsePackageXMLFile :: FilePath -> IO (Either PackageParseError Package)
+parsePackageXMLFile file = parsePackageXML file <$> readFile file
 
 pkgFile :: Parser Package
 pkgFile = try pkgFile2 <|> pkgFile3
@@ -265,7 +268,6 @@ pkgElement2 =
     ( try pkgName
           <|> try pkgVersion
           <|> try pkgDescription
-          <|> try pkgMaintainerEmail
           <|> try pkgMaintainer
           <|> try pkgLicense
           <|> try pkgUrl
@@ -280,7 +282,6 @@ pkgElement3 =
     ( try pkgName
           <|> try pkgVersion
           <|> try pkgDescription
-          <|> try pkgMaintainerEmail
           <|> try pkgMaintainer
           <|> try pkgLicense
           <|> try pkgUrl
@@ -317,18 +318,19 @@ pkgDescription = do
 -- >>> parse pkgDescription "" "<description>Package description</description>\n"
 -- Right "Package description"
 
-pkgMaintainerEmail :: Parser PkgElement
-pkgMaintainerEmail = do
-  string "<maintainer email=\""
-  email <- manyTill anySingle (string "\">")
-  name <- manyTill anySingle (string "</maintainer>")
-  return $ PkgMaintainer name
-
-pkgMaintainer :: Parser PkgElement
-pkgMaintainer = do
-  string "<maintainer>"
-  x <- manyTill anySingle (string "</maintainer>")
-  return $ PkgMaintainer x
+-- pkgMaintainerEmail :: Parser PkgElement
+-- pkgMaintainerEmail = do
+--   string "<maintainer email=\""
+--   email <- manyTill anySingle (string "\">")
+--   name <- manyTill anySingle (string "</maintainer>")
+--   return $ PkgMaintainer name
+--
+-- pkgMaintainer :: Parser PkgElement
+-- pkgMaintainer = do
+--   string "<maintainer>"
+--   x <- manyTill anySingle (string "</maintainer>")
+--   return $ PkgMaintainer x
+pkgMaintainer = parseTagP ["email"] "maintainer" PkgMaintainer
 
 -- >>> parse pkgMaintainer "" "<maintainer email=\"johndoe@gmail.com\">John Doe</maintainer>\n"
 -- Right "John Doe"
@@ -342,20 +344,28 @@ pkgLicense = do
 -- >>> parse pkgLicense "" "<license>MIT</license>\n"
 -- Right "MIT"
 
-pkgUrl :: Parser PkgElement
-pkgUrl = do
-  string "<url>"
-  x <- manyTill anySingle (string "</url>")
-  return $ PkgUrl x
+-- pkgUrl :: Parser PkgElement
+-- pkgUrl = do
+--   string "<url>"
+--   x <- manyTill anySingle (string "</url>")
+--   return $ PkgUrl x
+pkgUrl = parseTagP ["type"] "url" PkgUrl
 
 -- >>> parse pkgUrl "" "<url>www.github.com</url>\n"
 -- Right "www.github.com"
 
-pkgAuthor :: Parser PkgElement
-pkgAuthor = do
-  string "<author>"
-  x <- manyTill anySingle (string "</author>")
-  return $ PkgAuthor x
+-- pkgAuthorEmail :: Parser PkgElement
+-- pkgAuthorEmail = do
+--   string "<author email=\"" >> manyTill anySingle (string "\">")
+--   x <- manyTill anySingle (string "</author>")
+--   return $ PkgAuthor x
+--
+-- pkgAuthor :: Parser PkgElement
+-- pkgAuthor = do
+--   string "<author>"
+--   x <- manyTill anySingle (string "</author>")
+--   return $ PkgAuthor x
+pkgAuthor = parseTagP ["email"] "author" PkgAuthor
 
 -- >>> parse pkgAuthor "" "<author>John Doe</author>\n"
 -- Right "John Doe"
@@ -375,10 +385,27 @@ pkgDependency = do
       <|> try pkgReplace
   return $ PkgDependency x
 
-parseTag tag p = do
-  manyTill anySingle (string ("<" ++ tag ++ ">"))
-  x <- manyTill anySingle (string ("</" ++ tag ++ ">"))
+-- parseTagP :: String -> [String] -> (String -> a) -> Parser a
+parseTagP opts tag p = do
+  lexeme $ string ("<" ++ tag)
+  skipMany $ lexeme $ choice $ map tagOption opts
+  char '>'
+  x <- takeWhile1P Nothing (/= '<')
+  lexeme $ string ("</" ++ tag ++ ">")
   return $ p x
+
+tagOption :: String -> Parser (String)
+tagOption opt = do
+  lexeme $ string (opt ++ "=\"")
+  manyTill anySingle (char '"')
+
+-- parseTag tag p = do
+--   lexeme $ string ("<" ++ tag ++ ">")
+--   x <- takeWhile1P Nothing (/= '<')
+--   lexeme $ string ("</" ++ tag ++ ">")
+--   return $ p x
+
+parseTag = parseTagP []
 
 pkgBuildDepend = parseTag "build_depend" BuildDepend
 pkgBuildExportDepend = parseTag "build_export_depend" BuildExportDepend

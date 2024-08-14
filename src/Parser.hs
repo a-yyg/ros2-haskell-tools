@@ -6,9 +6,11 @@
 -- import Control.Applicative
 -- import System.Console.ArgParser
 
-import Ros2.PackageParser (parsePackageXML)
+import Ros2.PackageParser (parsePackageXMLFile)
+import Ros2.PrettyError
 import System.Console.CmdArgs
 import Text.Pretty.Simple
+-- import Text.Megaparsec (errorBundlePretty)
 
 data Parser = Parser
   { file :: FilePath
@@ -30,10 +32,9 @@ parserOpt =
 main :: IO ()
 main = do
   opts <- cmdArgs parserOpt
-  content <- readFile $ file opts
-  -- print content
-  case parsePackageXML content of
-    Left err -> print err
+  r <- parsePackageXMLFile $ file opts
+  case r of
+    Left err -> putStrLn $ prettyError err
     Right parsed -> pPrint parsed
 
 -- package <- parsePackageXML content

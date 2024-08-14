@@ -73,15 +73,3 @@ source = do
   string "      type: " >> manyTill anySingle (string "\n")
   string "      url: " >> manyTill anySingle (string "\n")
   string "      version: " >> manyTill anySingle (string "\n")
-
-systemDepFile :: Parser [String]
-systemDepFile = manyTill systemDep eof
-
-parseSystemDepFile :: String -> Either (ParseErrorBundle String Void) [String]
-parseSystemDepFile = parse systemDepFile ""
-
-systemDep :: Parser String
-systemDep = do
-  name' <- manyTill (anySingleBut ' ') (string ":" >> whiteSpace >> string "\n")
-  some (string "  " >> manyTill anySingle (char '\n'))
-  return name'
