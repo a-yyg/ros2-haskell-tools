@@ -6,6 +6,8 @@
 -- import Control.Applicative
 -- import System.Console.ArgParser
 
+module DepCheck (doDeps) where
+
 import Ros2.Graph
 import Ros2.PackageParser
 import Ros2.IndexParser
@@ -21,53 +23,51 @@ import System.Directory.Recursive
 import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
 import Ros2.PackageParser (parsePackageXMLFile)
 
-data DepCheck = DepCheck
-  { dir :: FilePath
-  , index :: FilePath
-  -- , systemIndex :: FilePath
-  , verbose :: Bool
-  }
-  deriving (Show, Data, Typeable)
+-- data Deps = Deps
+--   { dir :: FilePath
+--   , index :: FilePath
+--   , verbose :: Bool
+--   }
+--   deriving (Show, Data, Typeable)
 
-depChkOpt :: DepCheck
-depChkOpt =
-  DepCheck
-    { dir =
-        def
-          &= typ "DIR"
-          &= opt "."
-          &= help "The directory to check for dependencies"
-    , index =
-        def
-          &= typ "FILE"
-          &= opt "distribution.yaml"
-          &= help "The ROS2 index index file"
-    -- , systemIndex =
-    --     def
-    --       &= typ "FILE"
-    --       &= opt "base.yaml"
-    --       &= help "The system dependencies file"
-    , verbose =
-        def
-          &= help "Enable verbose messages"
-    }
-    &= summary "depcheck v0.1.0.0"
-    &= program "depcheck"
+-- depChkOpt :: DepCheck
+-- depChkOpt =
+--   DepCheck
+--     { dir =
+--         def
+--           &= typ "DIR"
+--           &= opt "."
+--           &= help "The directory to check for dependencies"
+--     , index =
+--         def
+--           &= typ "FILE"
+--           &= opt "distribution.yaml"
+--           &= help "The ROS2 index index file"
+--     -- , systemIndex =
+--     --     def
+--     --       &= typ "FILE"
+--     --       &= opt "base.yaml"
+--     --       &= help "The system dependencies file"
+--     , verbose =
+--         def
+--           &= help "Enable verbose messages"
+--     }
+--     &= summary "depcheck v0.1.0.0"
+--     &= program "depcheck"
 
-main :: IO ()
-main = do
-  args' <- cmdArgs depChkOpt
-  r <- parseRootDir $ dir args'
-  index' <- parseIndexFile <$> readFile (index args')
+doDeps :: FilePath -> FilePath -> Bool -> IO ()
+doDeps dir index verbose = do
+  r <- parseRootDir dir
+  index' <- parseIndexFile <$> readFile index
   -- systemIndex' <- parseSystemDepFile <$> readFile (systemIndex args')
   systemDeps <- getSystemDeps
   case r of
-    Left errs -> (if verbose args' then pPrint errs else putStrLn "Error parsing package.xml files")
+    Left errs -> (if verbose then pPrint errs else putStrLn "Error parsing package.xml files")
     Right pkgs -> case (index',systemDeps) of
       (Left err, _) -> putStrLn $ "Error parsing index file: " ++ errorBundlePretty err
       (_, Left errs) -> putStrLn $ "Error getting system dependencies: " ++ concatMap errorBundlePretty errs
       (Right i', Right s') -> case checkDeps (i' ++ s') pkgs of
-        Left errs -> (if verbose args' then pPrint errs else putStrLn "Dependency errors found")
+        Left errs -> (if verbose then pPrint errs else putStrLn "Dependency errors found")
         Right _ -> putStrLn "No dependency errors found"
 
 -- main = pPrint =<< getPackageXMLs . dir =<< cmdArgs depChkOpt
