@@ -1,19 +1,19 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-cse #-}
 
 module Main where
 
+import Data.Data
 import DepCheck (doDeps)
 import Parser (doParse)
-import Data.Data
 import System.Console.CmdArgs
 
 data Rostool
   = Deps
       { dir :: FilePath
-      , index :: FilePath
+      , distro :: String
       , verbose :: Bool
       }
   | Parse
@@ -27,18 +27,21 @@ depsOpt =
     { dir =
         def
           &= typDir
+          &= name "d"
           &= help "The directory to check for dependencies"
-    , index =
+    , distro =
         def
-          &= typFile
-          &= help "The ROS2 index index file"
+          &= typ "DISTRO"
+          &= name "D"
+          &= help "The ROS2 distribution to check against"
     , verbose =
         def
           &= help "Enable verbose messages"
     }
     &= help "Check dependencies of a ROS2 package"
-    -- &= program "rostool deps"
-    -- &= summary "rostool deps v0.1.0.0"
+
+-- &= program "rostool deps"
+-- &= summary "rostool deps v0.1.0.0"
 
 parseOpt :: Rostool
 parseOpt =
@@ -49,14 +52,15 @@ parseOpt =
           &= help "The package.xml file to parse"
     }
     &= help "Parse a ROS2 package.xml file"
-    -- &= program "rostool parse"
-    -- &= summary "rostool parse v0.1.0.0"
+
+-- &= program "rostool parse"
+-- &= summary "rostool parse v0.1.0.0"
 
 main :: IO ()
 main = do
   args <- cmdArgs (modes [depsOpt &= auto, parseOpt])
   case args of
-    Deps {dir = "", index, verbose} -> error "Directory must be specified"
-    Deps {dir, index = "", verbose} -> error "Index file must be specified"
-    Deps {dir, index, verbose} -> doDeps dir index verbose
-    Parse {file} -> doParse file
+    Deps{dir = "", distro, verbose} -> error "Directory must be specified"
+    Deps{dir, distro = "", verbose} -> error "Distribution must be specified"
+    Deps{dir, distro, verbose} -> doDeps dir distro verbose
+    Parse{file} -> doParse file

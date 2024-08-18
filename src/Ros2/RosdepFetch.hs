@@ -2,15 +2,15 @@ module Ros2.RosdepFetch where
 
 import Ros2.PackageParser (PackageParseError)
 
+import Data.ByteString.Char8 hiding (empty)
 import Network.HTTP.Client
 import Network.HTTP.Simple
-import Data.ByteString.Char8 hiding (empty)
 
+import Data.Either (partitionEithers)
+import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Data.Void
-import Data.Either (partitionEithers)
 
 type Parser = Parsec Void [Char]
 

@@ -1,9 +1,12 @@
 module Ros2.IndexParser where
 
+import Ros2.RosdepFetch (fetchFromUrl)
+
+import Data.Void
+import Data.ByteString.Char8 (ByteString, unpack)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Data.Void
 
 type Parser = Parsec Void [Char]
 
@@ -73,3 +76,11 @@ source = do
   string "      type: " >> manyTill anySingle (string "\n")
   string "      url: " >> manyTill anySingle (string "\n")
   string "      version: " >> manyTill anySingle (string "\n")
+
+getIndexFile :: String -> IO ByteString
+getIndexFile distro = fetchFromUrl url
+ where
+  url = "https://raw.githubusercontent.com/ros/rosdistro/master/" ++ distro ++ "/distribution.yaml"
+
+getIndexDependencies :: String -> IO (Either (ParseErrorBundle String Void) [String])
+getIndexDependencies = (parseIndexFile . unpack <$>) . getIndexFile

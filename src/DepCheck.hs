@@ -9,19 +9,19 @@
 module DepCheck (doDeps) where
 
 import Ros2.Graph
-import Ros2.PackageParser
 import Ros2.IndexParser
-import Ros2.RosdepFetch
+import Ros2.PackageParser
 import Ros2.PrettyError
+import Ros2.RosdepFetch
 import System.Console.CmdArgs
 import Text.Pretty.Simple
 
 import Control.Monad (filterM)
 import Data.Either (partitionEithers)
 import Data.List
+import Ros2.PackageParser (parsePackageXMLFile)
 import System.Directory.Recursive
 import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
-import Ros2.PackageParser (parsePackageXMLFile)
 
 -- data Deps = Deps
 --   { dir :: FilePath
@@ -55,15 +55,16 @@ import Ros2.PackageParser (parsePackageXMLFile)
 --     &= summary "depcheck v0.1.0.0"
 --     &= program "depcheck"
 
-doDeps :: FilePath -> FilePath -> Bool -> IO ()
-doDeps dir index verbose = do
+doDeps :: FilePath -> String -> Bool -> IO ()
+doDeps dir distro verbose = do
   r <- parseRootDir dir
-  index' <- parseIndexFile <$> readFile index
+  -- index' <- parseIndexFile <$> readFile index
+  index' <- getIndexDependencies distro
   -- systemIndex' <- parseSystemDepFile <$> readFile (systemIndex args')
   systemDeps <- getSystemDeps
   case r of
     Left errs -> (if verbose then pPrint errs else putStrLn "Error parsing package.xml files")
-    Right pkgs -> case (index',systemDeps) of
+    Right pkgs -> case (index', systemDeps) of
       (Left err, _) -> putStrLn $ "Error parsing index file: " ++ errorBundlePretty err
       (_, Left errs) -> putStrLn $ "Error getting system dependencies: " ++ concatMap errorBundlePretty errs
       (Right i', Right s') -> case checkDeps (i' ++ s') pkgs of
@@ -94,10 +95,10 @@ parseRootDir root = do
       mapM_ (\err -> putStrLn $ prettyError err) errs
       return $ Left errs
 
-      -- putStrLn $
-      --   "Error parsing package.xml files: \n"
-      --     ++ concatMap (\(xml, err) -> xml ++ ":\n\ESC[91mError:" ++ err ++ "\ESC[0m\n") (zip xmls' (map errorBundlePretty errs))
-      --
+-- putStrLn $
+--   "Error parsing package.xml files: \n"
+--     ++ concatMap (\(xml, err) -> xml ++ ":\n\ESC[91mError:" ++ err ++ "\ESC[0m\n") (zip xmls' (map errorBundlePretty errs))
+--
 getPackageXMLs :: FilePath -> IO [FilePath]
 -- getPackageXMLs = fmap (filter ("package.xml" `isSuffixOf`)) . getDirectoryContents
 getPackageXMLs files = do
