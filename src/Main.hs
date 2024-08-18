@@ -10,6 +10,19 @@ import DepCheck (doDeps)
 import Parser (doParse)
 import System.Console.CmdArgs
 
+-- https://stackoverflow.com/questions/65483488/mandatory-arguments-with-cmdargs
+helpAndExit :: (Data a) => String -> a -> IO ()
+helpAndExit msg args =
+    do
+    let cm = cmdArgsMode args
+    let ht = msg ++ "\n\n"
+             ++ show cm
+    cmdArgsApply (CmdArgs{cmdArgsValue=args,
+                          cmdArgsHelp = Just ht,
+                          cmdArgsVersion = Nothing,
+                          cmdArgsVerbosity = Nothing } )
+    return ()
+
 data Rostool
   = Deps
       { dir :: FilePath
@@ -60,7 +73,8 @@ main :: IO ()
 main = do
   args <- cmdArgs (modes [depsOpt &= auto, parseOpt])
   case args of
-    Deps{dir = "", distro, verbose} -> error "Directory must be specified"
-    Deps{dir, distro = "", verbose} -> error "Distribution must be specified"
+    Deps{dir = "", ..} -> helpAndExit "Directory must be specified" depsOpt
+    Deps{distro = "", ..} -> helpAndExit "Distribution must be specified" depsOpt
     Deps{dir, distro, verbose} -> doDeps dir distro verbose
+    Parse{file = ""} -> helpAndExit "File must be specified" parseOpt
     Parse{file} -> doParse file
