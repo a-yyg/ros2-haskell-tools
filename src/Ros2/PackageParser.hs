@@ -30,10 +30,11 @@ import qualified Text.Megaparsec.Char.Lexer as L
 type Parser = Parsec Void [Char]
 
 whiteSpace :: Parser ()
-whiteSpace = L.space
-  space1
-  empty
-  (L.skipBlockComment "<!--" "-->")
+whiteSpace =
+  L.space
+    space1
+    empty
+    (L.skipBlockComment "<!--" "-->")
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme whiteSpace
@@ -127,7 +128,8 @@ xmlHeader = do
   _ <- lexeme $ string "<?xml version=\"1.0\"?>"
   optional
     ( lexeme $
-        string "<!DOCTYPE xml>")
+        string "<!DOCTYPE xml>"
+    )
   optional
     ( lexeme $
         string "<?xml-model"
@@ -266,30 +268,30 @@ pkgElement2 :: Parser PkgElement
 pkgElement2 =
   lexeme
     ( try pkgName
-          <|> try pkgVersion
-          <|> try pkgDescription
-          <|> try pkgMaintainer
-          <|> try pkgLicense
-          <|> try pkgUrl
-          <|> try pkgAuthor
-          <|> try pkgDependency
-          <|> try pkgExport
-       )
+        <|> try pkgVersion
+        <|> try pkgDescription
+        <|> try pkgMaintainer
+        <|> try pkgLicense
+        <|> try pkgUrl
+        <|> try pkgAuthor
+        <|> try pkgDependency
+        <|> try pkgExport
+    )
 
 pkgElement3 :: Parser PkgElement
 pkgElement3 =
   lexeme
     ( try pkgName
-          <|> try pkgVersion
-          <|> try pkgDescription
-          <|> try pkgMaintainer
-          <|> try pkgLicense
-          <|> try pkgUrl
-          <|> try pkgAuthor
-          <|> try pkgDependency
-          <|> try pkgExport
-          <|> try pkgGroupDependency
-       )
+        <|> try pkgVersion
+        <|> try pkgDescription
+        <|> try pkgMaintainer
+        <|> try pkgLicense
+        <|> try pkgUrl
+        <|> try pkgAuthor
+        <|> try pkgDependency
+        <|> try pkgExport
+        <|> try pkgGroupDependency
+    )
 
 pkgName :: Parser PkgElement
 pkgName = do

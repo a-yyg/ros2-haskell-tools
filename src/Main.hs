@@ -13,14 +13,20 @@ import System.Console.CmdArgs
 -- https://stackoverflow.com/questions/65483488/mandatory-arguments-with-cmdargs
 helpAndExit :: (Data a) => String -> a -> IO ()
 helpAndExit msg args =
-    do
+  do
     let cm = cmdArgsMode args
-    let ht = msg ++ "\n\n"
-             ++ show cm
-    cmdArgsApply (CmdArgs{cmdArgsValue=args,
-                          cmdArgsHelp = Just ht,
-                          cmdArgsVersion = Nothing,
-                          cmdArgsVerbosity = Nothing } )
+    let ht =
+          msg
+            ++ "\n\n"
+            ++ show cm
+    cmdArgsApply
+      ( CmdArgs
+          { cmdArgsValue = args
+          , cmdArgsHelp = Just ht
+          , cmdArgsVersion = Nothing
+          , cmdArgsVerbosity = Nothing
+          }
+      )
     return ()
 
 data Rostool

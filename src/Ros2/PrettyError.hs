@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+
 module Ros2.PrettyError where
 
 import Text.Megaparsec

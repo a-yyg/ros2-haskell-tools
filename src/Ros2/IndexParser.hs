@@ -2,8 +2,8 @@ module Ros2.IndexParser where
 
 import Ros2.RosdepFetch (fetchFromUrl)
 
-import Data.Void
 import Data.ByteString.Char8 (ByteString, unpack)
+import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
